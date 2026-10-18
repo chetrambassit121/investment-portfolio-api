@@ -1,25 +1,22 @@
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
+from rest_framework import viewsets
+from .models import Portfolio, Asset, Transaction
+from .serializers import (
+    PortfolioSerializer,
+    AssetSerializer,
+    TransactionSerializer,
+)
 
 
-@api_view(["GET"])
-def portfolio_list(request):
-    portfolios = [
-        {
-            "id": 1,
-            "name": "Private Equity Fund A",
-            "total_value": 15000000,
-            "currency": "USD",
-        },
-        {
-            "id": 2,
-            "name": "Real Estate Fund B",
-            "total_value": 25000000,
-            "currency": "USD",
-        },
-    ]
+class PortfolioViewSet(viewsets.ModelViewSet):
+    queryset = Portfolio.objects.all()
+    serializer_class = PortfolioSerializer
 
-    return Response({
-        "count": len(portfolios),
-        "results": portfolios,
-    })
+
+class AssetViewSet(viewsets.ModelViewSet):
+    queryset = Asset.objects.all()
+    serializer_class = AssetSerializer
+
+
+class TransactionViewSet(viewsets.ModelViewSet):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
