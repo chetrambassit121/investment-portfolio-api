@@ -1,0 +1,53 @@
+[
+  {
+    "name": "Global Private Equity Fund",
+    "fund_type": "Private Equity",
+    "currency": "USD",
+    "assets": [
+      {
+        "name": "Technology Company A",
+        "asset_type": "Private Equity",
+        "market_value": "8500000.00"
+      },
+      {
+        "name": "Healthcare Company B",
+        "asset_type": "Private Equity",
+        "market_value": "6200000.00"
+      }
+    ]
+  },
+  {
+    "name": "Commercial Real Estate Fund",
+    "fund_type": "Real Estate",
+    "currency": "USD",
+    "assets": [
+      {
+        "name": "Manhattan Office Building",
+        "asset_type": "Real Estate",
+        "market_value": "12500000.00"
+      },
+      {
+        "name": "Chicago Logistics Center",
+        "asset_type": "Real Estate",
+        "market_value": "7800000.00"
+      }
+    ]
+  },
+  {
+    "name": "Infrastructure Investment Fund",
+    "fund_type": "Infrastructure",
+    "currency": "USD",
+    "assets": [
+      {
+        "name": "Renewable Energy Project",
+        "asset_type": "Infrastructure",
+        "market_value": "9500000.00"
+      },
+      {
+        "name": "Transportation Infrastructure",
+        "asset_type": "Infrastructure",
+        "market_value": "11300000.00"
+      }
+    ]
+  }
+]
