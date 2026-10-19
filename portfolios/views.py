@@ -11,15 +11,76 @@ from django.db.models.functions import Coalesce
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+import logging
+from rest_framework import status
+from rest_framework.exceptions import APIException
+
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+
+
+logger = logging.getLogger("portfolios")
+
 
 class PortfolioViewSet(viewsets.ModelViewSet):
-    queryset = Portfolio.objects.all()
+    # queryset = Portfolio.objects.all()
+    queryset = Portfolio.objects.all().order_by("id")
     serializer_class = PortfolioSerializer
+
+    def perform_create(self, serializer):
+        portfolio = serializer.save()
+
+        logger.info(
+            "Portfolio created: id=%s name=%s",
+            portfolio.id,
+            portfolio.name,
+        )
+
+    def perform_update(self, serializer):
+        portfolio = serializer.save()
+
+        logger.info(
+            "Portfolio updated: id=%s",
+            portfolio.id,
+        )
+
+    def perform_destroy(self, instance):
+        portfolio_id = instance.id
+        instance.delete()
+
+        logger.info(
+            "Portfolio deleted: id=%s",
+            portfolio_id,
+        )
 
 
 class AssetViewSet(viewsets.ModelViewSet):
-    queryset = Asset.objects.all()
+    queryset = Asset.objects.select_related("portfolio").all()
     serializer_class = AssetSerializer
+
+    filter_backends = [
+        DjangoFilterBackend,
+        SearchFilter,
+        OrderingFilter,
+    ]
+
+    filterset_fields = [
+        "portfolio",
+        "asset_type",
+    ]
+
+    search_fields = [
+        "name",
+        "asset_type",
+    ]
+
+    ordering_fields = [
+        "market_value",
+        "name",
+        "id",
+    ]
+
+    ordering = ["id"]
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
