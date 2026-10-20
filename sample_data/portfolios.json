@@ -1,0 +1,20 @@
+
+{
+  "portfolios": [
+    {
+      "name": "Global Private Equity Fund",
+      "fund_type": "Private Equity",
+      "currency": "USD"
+    },
+    {
+      "name": "Commercial Real Estate Fund",
+      "fund_type": "Real Estate",
+      "currency": "USD"
+    },
+    {
+      "name": "Infrastructure Investment Fund",
+      "fund_type": "Infrastructure",
+      "currency": "USD"
+    }
+  ]
+}
