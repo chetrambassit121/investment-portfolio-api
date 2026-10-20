@@ -5,6 +5,7 @@ from .views import (
     AssetViewSet,
     TransactionViewSet,
     portfolio_summary,
+    ImportStatusView,
 )
 
 router = DefaultRouter()
@@ -32,6 +33,11 @@ urlpatterns = [
         "reports/portfolio-summary/",
         portfolio_summary,
         name="portfolio-summary"
+    ),
+    path(
+        "import-status/",
+        ImportStatusView.as_view(),
+        name="import-status",
     ),
     path("", include(router.urls)),
 ]

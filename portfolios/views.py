@@ -18,6 +18,12 @@ from rest_framework.exceptions import APIException
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import ImportLog
+from .serializers import ImportLogSerializer
+
 
 logger = logging.getLogger("portfolios")
 
@@ -121,3 +127,31 @@ def portfolio_summary(request):
         "count": len(results),
         "results": results,
     })
+
+
+
+
+class ImportStatusView(APIView):
+    '''
+        1. Django queries PostgreSQL for the latest import record.
+        2. The serializer converts the record into JSON.
+        3. Django REST Framework returns the result to an authenticated user.
+    '''
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        latest_import = (
+            ImportLog.objects
+            .order_by("-started_at", "-id")
+            .first()
+        )
+
+        if latest_import is None:
+            return Response({
+                "status": "never_run",
+                "message": "No S3 imports recorded yet.",
+            })
+
+        serializer = ImportLogSerializer(latest_import)
+
+        return Response(serializer.data)

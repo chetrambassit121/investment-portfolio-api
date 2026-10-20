@@ -55,3 +55,49 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_type} - {self.asset.name}"
+
+
+class ImportLog(models.Model):
+    '''
+        Field:	                Purpose:
+        status	                Running, success, or failed
+        source	                Where the data originated
+        total_records	        Records processed
+        created_count	        New portfolios created
+        updated_count	        Existing portfolios updated
+        started_at	            Import start time
+        completed_at	        Import completion time
+        error_message	        Failure details for internal debugging
+    '''
+
+    STATUS_CHOICES = [
+        ("running", "Running"),
+        ("success", "Success"),
+        ("failed", "Failed"),
+    ]
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="running",
+    )
+
+    source = models.CharField(
+        max_length=100,
+        default="AWS S3",
+    )
+
+    total_records = models.IntegerField(default=0)
+    created_count = models.IntegerField(default=0)
+    updated_count = models.IntegerField(default=0)
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    error_message = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.status} - {self.started_at}"

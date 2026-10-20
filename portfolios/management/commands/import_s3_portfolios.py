@@ -1,13 +1,17 @@
+
 import json
 import logging
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction, DatabaseError
-from django.core.exceptions import ValidationError
+from django.utils import timezone
 
-from portfolios.models import Portfolio
+from portfolios.models import Portfolio, ImportLog
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +27,22 @@ class Command(BaseCommand):
     help = "Import portfolio data from AWS S3 into PostgreSQL"
 
     def handle(self, *args, **options):
-        s3 = boto3.client("s3", region_name="us-east-2")
+
+        # Create a record when the import begins.
+        import_log = ImportLog.objects.create(
+            status="running",
+            source="AWS S3",
+        )
+
+        created_count = 0
+        updated_count = 0
 
         try:
+            s3 = boto3.client(
+                "s3",
+                region_name="us-east-2",
+            )
+
             response = s3.get_object(
                 Bucket=BUCKET_NAME,
                 Key=OBJECT_KEY,
@@ -34,45 +51,42 @@ class Command(BaseCommand):
             raw_data = response["Body"].read()
             data = json.loads(raw_data)
 
-        except (BotoCoreError, ClientError, OSError) as exc:
-            logger.exception("Failed to read S3 portfolio data")
-            raise CommandError("S3 download failed") from exc
+            if isinstance(data, dict):
+                data = data.get("portfolios")
 
-        except (ValueError, UnicodeDecodeError) as exc:
-            raise CommandError("Invalid JSON in S3 object") from exc
+            if not isinstance(data, list):
+                raise ValueError(
+                    "Expected a list of portfolios"
+                )
 
-        # Adjust this if your JSON uses a different structure.
-        if isinstance(data, dict):
-            data = data.get("portfolios")
-
-        if not isinstance(data, list):
-            raise CommandError("Expected a list of portfolios")
-
-        created_count = 0
-        updated_count = 0
-
-        try:
+            # Validate and import inside a transaction.
             with transaction.atomic():
 
                 for item in data:
+
                     if not isinstance(item, dict):
-                        raise CommandError("Invalid portfolio record")
+                        raise ValueError(
+                            "Invalid portfolio record"
+                        )
 
                     try:
                         name = item["name"]
                         fund_type = item["fund_type"]
                         currency = item["currency"]
+
                     except KeyError as exc:
-                        raise CommandError(
+                        raise ValueError(
                             f"Missing required field: {exc}"
                         ) from exc
 
-                    portfolio, created = Portfolio.objects.update_or_create(
-                        name=name,
-                        defaults={
-                            "fund_type": fund_type,
-                            "currency": currency,
-                        },
+                    portfolio, created = (
+                        Portfolio.objects.update_or_create(
+                            name=name,
+                            defaults={
+                                "fund_type": fund_type,
+                                "currency": currency,
+                            },
+                        )
                     )
 
                     portfolio.full_clean()
@@ -89,6 +103,43 @@ class Command(BaseCommand):
                         portfolio.name,
                     )
 
-        except (DatabaseError, ValidationError) as exc:
-            logger.exception("Portfolio import failed")
-            raise CommandError("Database import failed") from exc
+            # Only mark success after the transaction commits.
+            import_log.status = "success"
+            import_log.total_records = len(data)
+            import_log.created_count = created_count
+            import_log.updated_count = updated_count
+            import_log.completed_at = timezone.now()
+
+            import_log.save()
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Import complete: "
+                    f"{created_count} created, "
+                    f"{updated_count} updated"
+                )
+            )
+
+        except (
+            BotoCoreError,
+            ClientError,
+            OSError,
+            ValueError,
+            UnicodeDecodeError,
+            KeyError,
+            TypeError,
+            DatabaseError,
+            ValidationError,
+        ) as exc:
+
+            logger.exception("S3 portfolio import failed")
+
+            import_log.status = "failed"
+            import_log.error_message = str(exc)
+            import_log.completed_at = timezone.now()
+
+            import_log.save()
+
+            raise CommandError(
+                "Portfolio import failed. Check logs."
+            ) from exc
