@@ -26,3 +26,8 @@ media/
 # Notes
 Notes
 .Notes
+
+# AWS
+# AWS credentials
+.aws/
+**/.aws/
