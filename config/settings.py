@@ -189,3 +189,12 @@ LOGGING = {
         },
     },
 }
+
+
+# AWS SQS Configuration
+AWS_REGION = "us-east-2"
+
+AWS_SQS_QUEUE_URL = (
+    "https://sqs.us-east-2.amazonaws.com/"
+    "772325759101/investment-portfolio-import-queue"
+)

@@ -24,7 +24,16 @@ from rest_framework.permissions import IsAuthenticated
 from .models import ImportLog
 from .serializers import ImportLogSerializer
 
+from botocore.exceptions import BotoCoreError, ClientError
+from django.core.exceptions import ImproperlyConfigured
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
+from portfolios.services.sqs_service import send_portfolio_import_message
+
+logger = logging.getLogger(__name__)
 logger = logging.getLogger("portfolios")
 
 
@@ -155,3 +164,37 @@ class ImportStatusView(APIView):
         serializer = ImportLogSerializer(latest_import)
 
         return Response(serializer.data)
+
+
+class QueuePortfolioImportView(APIView):
+    """
+    Queue an S3 portfolio import job using AWS SQS.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            message_id = send_portfolio_import_message()
+
+        except (ClientError, BotoCoreError, ImproperlyConfigured):
+            logger.exception(
+                "Unable to queue portfolio import job"
+            )
+
+            return Response(
+                {
+                    "status": "error",
+                    "message": "Unable to queue import job.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(
+            {
+                "status": "queued",
+                "message": "Portfolio import job queued successfully.",
+                "message_id": message_id,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
