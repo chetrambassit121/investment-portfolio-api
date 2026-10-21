@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import viewsets
 from .models import Portfolio, Asset, Transaction
 from .serializers import (
@@ -174,18 +175,34 @@ class QueuePortfolioImportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+
+        import_log = ImportLog.objects.create(
+            status="queued",
+            source="AWS S3",
+        )
+
         try:
-            message_id = send_portfolio_import_message()
+            message_id = send_portfolio_import_message(
+                import_id=import_log.id
+            )
 
         except (ClientError, BotoCoreError, ImproperlyConfigured):
             logger.exception(
                 "Unable to queue portfolio import job"
             )
 
+            import_log.status = "failed"
+            import_log.error_message = (
+                "Unable to queue import job."
+            )
+            import_log.completed_at = timezone.now()
+            import_log.save()
+
             return Response(
                 {
                     "status": "error",
                     "message": "Unable to queue import job.",
+                    "import_id": import_log.id,
                 },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
@@ -194,6 +211,7 @@ class QueuePortfolioImportView(APIView):
             {
                 "status": "queued",
                 "message": "Portfolio import job queued successfully.",
+                "import_id": import_log.id,
                 "message_id": message_id,
             },
             status=status.HTTP_202_ACCEPTED,

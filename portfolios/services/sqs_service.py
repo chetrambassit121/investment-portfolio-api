@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 '''
 
 
-def send_portfolio_import_message():
+def send_portfolio_import_message(import_id):
     """
     Send a portfolio import job to AWS SQS.
     """
@@ -31,6 +31,7 @@ def send_portfolio_import_message():
         "job_type": "import_portfolios",
         "source": "s3",
         "file": "portfolios.json",
+        "import_id": import_id,
     }
 
     try:
@@ -42,7 +43,8 @@ def send_portfolio_import_message():
         message_id = response["MessageId"]
 
         logger.info(
-            "Portfolio import job queued: message_id=%s",
+            "Portfolio import queued: import_id=%s message_id=%s",
+            import_id,
             message_id,
         )
 
@@ -50,6 +52,7 @@ def send_portfolio_import_message():
 
     except (ClientError, BotoCoreError):
         logger.exception(
-            "Failed to send portfolio import job to SQS"
+            "Failed to queue portfolio import: import_id=%s",
+            import_id,
         )
         raise

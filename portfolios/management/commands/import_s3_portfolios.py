@@ -26,13 +26,45 @@ OBJECT_KEY = "portfolios.json"
 class Command(BaseCommand):
     help = "Import portfolio data from AWS S3 into PostgreSQL"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--import-id",
+            type=int,
+            default=None,
+            help="Existing ImportLog ID for an SQS job",
+        )
+
     def handle(self, *args, **options):
 
         # Create a record when the import begins.
-        import_log = ImportLog.objects.create(
-            status="running",
-            source="AWS S3",
-        )
+        import_id = options.get("import_id")
+
+        if import_id is not None:
+            try:
+                import_log = ImportLog.objects.get(
+                    id=import_id
+                )
+            except ImportLog.DoesNotExist as exc:
+                raise CommandError(
+                    f"ImportLog {import_id} does not exist"
+                ) from exc
+
+            if import_log.status == "success":
+                self.stdout.write(
+                    f"Import {import_id} already completed."
+                )
+                return
+
+            if import_log.status != "running":
+                raise CommandError(
+                    f"Import {import_id} is not running."
+                )
+
+        else:
+            import_log = ImportLog.objects.create(
+                status="running",
+                source="AWS S3",
+            )
 
         created_count = 0
         updated_count = 0
